@@ -11,6 +11,8 @@ Carnet d'entraînement aux anneaux (Android, Flutter).
 - **Historique** pré-rempli avec tes séances du 25 août au 20 octobre 2026. Chaque séance se copie au même format que tes notes (`Pull ups : 2x10 + 1x7 (hauteur 5)`).
 - **Progression** : total de reps/secondes par séance, par exercice, avec courbe.
 - **Programme** modifiable : ordre, hauteurs, reps ou secondes, « de chaque côté », durée du repos.
+- **Temps restant et heure de fin estimée** pendant la séance (et sur l'accueil avant de commencer). Le calcul se recale sur ton rythme réel dès 3 séries faites.
+- **Samsung Health** : onglet Programme > « Envoyer les séances à Samsung Health ». La séance est écrite dans Health Connect comme entraînement de musculation, et Samsung Health la récupère si la synchro Health Connect est activée dans ses paramètres.
 - **Sauvegarde** : export/import en texte via le presse-papiers.
 
 Le nombre de séries visé pour chaque exercice = le nombre de séries faites la dernière fois. Une fois atteint, l'app passe à l'exercice suivant (tu peux revenir en arrière pour une série bonus).

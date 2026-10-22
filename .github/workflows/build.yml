@@ -28,12 +28,7 @@ jobs:
         run: |
           flutter create . --platforms=android --org fr.webeedigital --project-name anneaux
           rm -f test/widget_test.dart
-          sed -i 's/android:label="anneaux"/android:label="Anneaux"/' android/app/src/main/AndroidManifest.xml
-          # R8 retire des méthodes appelées via JNI par certains plugins (shared_preferences) :
-          # on les garde explicitement et on désactive la minification.
-          cp ci/proguard-rules.pro android/app/proguard-rules.pro
-          sed -i 's/signingConfig = signingConfigs.getByName("debug")/signingConfig = signingConfigs.getByName("debug")\n            isMinifyEnabled = false\n            isShrinkResources = false/' android/app/build.gradle.kts
-          grep -n "isMinifyEnabled" android/app/build.gradle.kts
+          python3 ci/patch_android.py
 
       - name: Clé de signature stable (permet les mises à jour sans désinstaller)
         run: |

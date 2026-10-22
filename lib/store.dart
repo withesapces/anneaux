@@ -13,6 +13,7 @@ class AppStore extends ChangeNotifier {
   static const _kRest = 'rest_seconds_v1';
   static const _kDraft = 'draft_v1';
   static const _kSound = 'sound_v1';
+  static const _kHealth = 'health_v1';
 
   late SharedPreferences _p;
 
@@ -20,6 +21,7 @@ class AppStore extends ChangeNotifier {
   List<ExerciseDef> routine = [];
   int restSeconds = 120;
   bool sound = true;
+  bool healthEnabled = false;
   WorkoutDraft? draft;
 
   Future<void> load() async {
@@ -45,6 +47,7 @@ class AppStore extends ChangeNotifier {
     _sort();
     restSeconds = _p.getInt(_kRest) ?? 120;
     sound = _p.getBool(_kSound) ?? true;
+    healthEnabled = _p.getBool(_kHealth) ?? false;
     final rawDraft = _p.getString(_kDraft);
     if (rawDraft != null) {
       try {
@@ -152,6 +155,7 @@ class AppStore extends ChangeNotifier {
     final d = draft;
     if (d == null) return null;
     d.session.exercises.removeWhere((e) => e.sets.isEmpty);
+    d.session.end = DateTime.now();
     // Les hauteurs utilisées deviennent les hauteurs par défaut du programme.
     for (final e in d.session.exercises) {
       final def = routine.where((r) => _same(r.name, e.name));
@@ -196,6 +200,18 @@ class AppStore extends ChangeNotifier {
   Future<void> setRest(int s) async {
     restSeconds = s;
     await _p.setInt(_kRest, s);
+    notifyListeners();
+  }
+
+  Future<void> setHealth(bool v) async {
+    healthEnabled = v;
+    await _p.setBool(_kHealth, v);
+    notifyListeners();
+  }
+
+  Future<void> markHealthSynced(Session s) async {
+    s.healthSynced = true;
+    await _saveSessions();
     notifyListeners();
   }
 

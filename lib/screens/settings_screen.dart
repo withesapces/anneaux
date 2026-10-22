@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../format.dart';
+import '../health_sync.dart';
 import '../models.dart';
 import '../store.dart';
 
@@ -166,6 +167,27 @@ class SettingsScreen extends StatelessWidget {
           subtitle: const Text('La vibration reste active dans tous les cas'),
           value: store.sound,
           onChanged: store.setSound,
+        ),
+        SwitchListTile(
+          title: const Text('Envoyer les séances à Samsung Health'),
+          subtitle: const Text(
+              'Via Health Connect, à la fin de chaque séance. Dans Samsung Health : '
+              'Paramètres > Health Connect, autorise la synchro des exercices.'),
+          value: store.healthEnabled,
+          onChanged: (v) async {
+            final messenger = ScaffoldMessenger.of(context);
+            if (!v) {
+              store.setHealth(false);
+              return;
+            }
+            final ok = await HealthSync.authorize();
+            await store.setHealth(ok);
+            messenger.showSnackBar(SnackBar(
+              content: Text(ok
+                  ? 'Connecté à Health Connect.'
+                  : 'Autorisation refusée ou Health Connect indisponible.'),
+            ));
+          },
         ),
         const Divider(height: 40),
         Padding(

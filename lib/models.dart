@@ -86,22 +86,33 @@ class ExerciseLog {
 class Session {
   String id;
   DateTime date;
+  DateTime? end;
+  bool healthSynced;
   List<ExerciseLog> exercises;
 
-  Session({required this.id, required this.date, List<ExerciseLog>? exercises})
-      : exercises = exercises ?? [];
+  Session({
+    required this.id,
+    required this.date,
+    this.end,
+    this.healthSynced = false,
+    List<ExerciseLog>? exercises,
+  }) : exercises = exercises ?? [];
 
   int get totalSets => exercises.fold(0, (a, e) => a + e.sets.length);
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'date': date.toIso8601String(),
+        'end': end?.toIso8601String(),
+        'healthSynced': healthSynced,
         'exercises': exercises.map((e) => e.toJson()).toList(),
       };
 
   factory Session.fromJson(Map<String, dynamic> j) => Session(
         id: j['id'] as String,
         date: DateTime.parse(j['date'] as String),
+        end: j['end'] == null ? null : DateTime.parse(j['end'] as String),
+        healthSynced: j['healthSynced'] as bool? ?? false,
         exercises: (j['exercises'] as List)
             .map((e) => ExerciseLog.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),

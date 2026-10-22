@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../estimate.dart';
 import '../format.dart';
+import '../models.dart';
 import '../store.dart';
 import 'history_screen.dart';
 import 'progress_screen.dart';
@@ -66,6 +68,21 @@ class _TodayTab extends StatelessWidget {
           '${store.routine.length} exercices · repos ${fmtClock(store.restSeconds)} entre chaque série',
           style: t.bodyMedium,
         ),
+        const SizedBox(height: 4),
+        Builder(builder: (context) {
+          final exs = draft?.session.exercises ??
+              store.routine
+                  .map((r) => ExerciseLog(name: r.name, unit: r.unit, perSide: r.perSide))
+                  .toList();
+          final left = estimateRemaining(store, exs, start: draft?.session.date);
+          final end = DateTime.now().add(Duration(seconds: left));
+          return Text(
+            draft == null
+                ? 'Durée estimée ≈ ${fmtDuration(left)} · fin vers ${fmtHour(end)} si tu commences maintenant'
+                : 'Reste ≈ ${fmtDuration(left)} · fin vers ${fmtHour(end)}',
+            style: t.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
+          );
+        }),
         const SizedBox(height: 24),
         if (draft != null) ...[
           Card(

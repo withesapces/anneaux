@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../estimate.dart';
 import '../format.dart';
+import '../health_sync.dart';
 import '../models.dart';
 import '../sound.dart';
 import '../store.dart';
@@ -70,7 +72,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   // ---------- Logique ----------
 
-  int _target(ExerciseLog ex) => max(1, store.lastLogFor(ex.name)?.sets.length ?? 3);
+  int _target(ExerciseLog ex) => targetSets(store, ex);
 
   int get _restLeft {
     final end = _d.restEndsAt;
@@ -111,6 +113,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         _chronoBeeped = true;
         _beeper.restOver(sound: store.sound);
       }
+      setState(() {});
+    } else {
+      // Rafraîchit l'estimation de fin de séance.
       setState(() {});
     }
   }
@@ -222,6 +227,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     messenger.showSnackBar(SnackBar(
       content: Text(saved == null ? 'Séance vide, rien enregistré.' : 'Séance enregistrée.'),
     ));
+    if (saved != null && store.healthEnabled) {
+      final err = await HealthSync.writeSession(saved);
+      if (err == null) await store.markHealthSynced(saved);
+      messenger.showSnackBar(SnackBar(
+        content: Text(err ?? 'Séance envoyée à Samsung Health (via Health Connect).'),
+      ));
+    }
   }
 
   // ---------- Dialogues ----------
@@ -399,7 +411,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final resting = _d.restEndsAt != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Exo ${_d.exIndex + 1} / ${_d.session.exercises.length}'),
+        title: _titleWithEstimate(context),
         actions: [
           IconButton(
             onPressed: _openExerciseList,
@@ -415,6 +427,28 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           child: resting ? _restView(context) : _setView(context),
         ),
       ),
+    );
+  }
+
+  Widget _titleWithEstimate(BuildContext context) {
+    final left = estimateRemaining(
+      store,
+      _d.session.exercises,
+      restLeft: _d.restEndsAt == null ? 0 : max(0, _restLeft),
+      start: _d.session.date,
+    );
+    final end = DateTime.now().add(Duration(seconds: left));
+    final elapsed = DateTime.now().difference(_d.session.date).inSeconds;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Exo ${_d.exIndex + 1} / ${_d.session.exercises.length}'),
+        Text(
+          '${fmtDuration(elapsed)} écoulées · reste ≈ ${fmtDuration(left)} · fin ${fmtHour(end)}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 

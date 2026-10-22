@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../estimate.dart';
 import '../format.dart';
+import '../health_sync.dart';
 import '../models.dart';
 import '../store.dart';
 
@@ -186,6 +188,24 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 onTap: () => _editExercise(e),
               ),
             ),
+          const SizedBox(height: 12),
+          if (s.end != null)
+            Text('Durée : ${fmtDuration(s.end!.difference(s.date).inSeconds)} '
+                '(${fmtHour(s.date)} → ${fmtHour(s.end!)})'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final err = await HealthSync.writeSession(s);
+              if (err == null) await store.markHealthSynced(s);
+              messenger.showSnackBar(
+                  SnackBar(content: Text(err ?? 'Envoyée à Samsung Health.')));
+            },
+            icon: Icon(s.healthSynced ? Icons.check : Icons.favorite_border),
+            label: Text(s.healthSynced
+                ? 'Déjà envoyée à Samsung Health (renvoyer)'
+                : 'Envoyer à Samsung Health'),
+          ),
           const SizedBox(height: 12),
           Text('Touche la date pour la changer, un exercice pour corriger ses séries.',
               style: t.bodySmall),
