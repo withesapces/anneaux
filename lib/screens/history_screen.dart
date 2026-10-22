@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../calories.dart';
 import '../estimate.dart';
 import '../format.dart';
 import '../health_sync.dart';
@@ -191,12 +192,14 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           const SizedBox(height: 12),
           if (s.end != null)
             Text('Durée : ${fmtDuration(s.end!.difference(s.date).inSeconds)} '
-                '(${fmtHour(s.date)} → ${fmtHour(s.end!)})'),
+                '(${fmtHour(s.date)} → ${fmtHour(s.end!)}) · '
+                '≈ ${estimateKcal(s, store.weightKg)} kcal'),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
-              final err = await HealthSync.writeSession(s);
+              final err = await HealthSync.writeSession(s,
+                  weightKg: store.sendCalories ? store.weightKg : null);
               if (err == null) await store.markHealthSynced(s);
               messenger.showSnackBar(
                   SnackBar(content: Text(err ?? 'Envoyée à Samsung Health.')));

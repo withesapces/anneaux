@@ -1,3 +1,4 @@
+import 'package:anneaux/calories.dart';
 import 'package:anneaux/format.dart';
 import 'package:anneaux/models.dart';
 import 'package:anneaux/seed.dart';
@@ -32,5 +33,14 @@ void main() {
     final s = seedSessions().first;
     final back = Session.fromJson(s.toJson());
     expect(exportSession(back), exportSession(s));
+  });
+
+  test('calories : 71 kg, 1 h 10 ≈ 290 kcal', () {
+    final s = Session(
+      id: 'x',
+      date: DateTime(2026, 10, 22, 12),
+      end: DateTime(2026, 10, 22, 13, 10),
+    );
+    expect(estimateKcal(s, 71), 290);
   });
 }

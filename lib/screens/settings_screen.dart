@@ -189,6 +189,41 @@ class SettingsScreen extends StatelessWidget {
             ));
           },
         ),
+        SwitchListTile(
+          title: const Text('Envoyer les calories estimées'),
+          subtitle: const Text(
+              'MET 3,5 × poids × durée. Désactive si une montre mesure déjà la séance.'),
+          value: store.sendCalories,
+          onChanged: store.setSendCalories,
+        ),
+        ListTile(
+          title: const Text('Poids'),
+          subtitle: const Text('Sert au calcul des calories'),
+          trailing: Text('${fmtHeight(store.weightKg)} kg', style: t.titleMedium),
+          onTap: () async {
+            final ctrl = TextEditingController(text: fmtHeight(store.weightKg));
+            final v = await showDialog<double>(
+              context: context,
+              builder: (c) => AlertDialog(
+                title: const Text('Poids (kg)'),
+                content: TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(c), child: const Text('Annuler')),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(
+                        c, double.tryParse(ctrl.text.trim().replaceAll(',', '.'))),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+            if (v != null && v > 20 && v < 300) store.setWeight(v);
+          },
+        ),
         const Divider(height: 40),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),

@@ -1,5 +1,6 @@
 import 'package:health/health.dart';
 
+import 'calories.dart';
 import 'models.dart';
 
 /// Envoi des séances vers Health Connect, que Samsung Health synchronise ensuite.
@@ -7,8 +8,16 @@ class HealthSync {
   static final Health _health = Health();
   static bool _configured = false;
 
-  static const _types = [HealthDataType.WORKOUT];
-  static const _perms = [HealthDataAccess.WRITE];
+  static const _types = [
+    HealthDataType.WORKOUT,
+    HealthDataType.TOTAL_CALORIES_BURNED,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+  ];
+  static const _perms = [
+    HealthDataAccess.WRITE,
+    HealthDataAccess.WRITE,
+    HealthDataAccess.WRITE,
+  ];
 
   static Future<void> _configure() async {
     if (_configured) return;
@@ -28,7 +37,7 @@ class HealthSync {
 
   /// Écrit la séance comme un entraînement de musculation.
   /// Renvoie null si OK, sinon un message d'erreur lisible.
-  static Future<String?> writeSession(Session s) async {
+  static Future<String?> writeSession(Session s, {double? weightKg}) async {
     try {
       await _configure();
       final ok = await _health.requestAuthorization(_types, permissions: _perms);
@@ -39,6 +48,8 @@ class HealthSync {
         start: s.date,
         end: end.isAfter(s.date) ? end : s.date.add(const Duration(minutes: 1)),
         title: 'Anneaux · ${s.totalSets} séries',
+        totalEnergyBurned: weightKg == null ? null : estimateKcal(s, weightKg),
+        totalEnergyBurnedUnit: HealthDataUnit.KILOCALORIE,
       );
       return written ? null : 'Health Connect a refusé l\'enregistrement.';
     } catch (e) {

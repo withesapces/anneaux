@@ -228,7 +228,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       content: Text(saved == null ? 'Séance vide, rien enregistré.' : 'Séance enregistrée.'),
     ));
     if (saved != null && store.healthEnabled) {
-      final err = await HealthSync.writeSession(saved);
+      final err = await HealthSync.writeSession(saved,
+          weightKg: store.sendCalories ? store.weightKg : null);
       if (err == null) await store.markHealthSynced(saved);
       messenger.showSnackBar(SnackBar(
         content: Text(err ?? 'Séance envoyée à Samsung Health (via Health Connect).'),

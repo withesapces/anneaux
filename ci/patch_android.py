@@ -44,6 +44,8 @@ patch(manifest, 'android:label="anneaux"', 'android:label="Anneaux"')
 patch(manifest, "<application",
       '<uses-permission android:name="android.permission.health.WRITE_EXERCISE"/>\n'
       '    <uses-permission android:name="android.permission.health.READ_EXERCISE"/>\n'
+      '    <uses-permission android:name="android.permission.health.WRITE_TOTAL_CALORIES_BURNED"/>\n'
+      '    <uses-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED"/>\n'
       "    <application")
 patch(manifest, r'(<category android:name="android.intent.category.LAUNCHER"\s*/>\s*</intent-filter>)',
       r'\1\n            <intent-filter>\n'

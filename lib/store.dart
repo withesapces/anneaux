@@ -14,6 +14,8 @@ class AppStore extends ChangeNotifier {
   static const _kDraft = 'draft_v1';
   static const _kSound = 'sound_v1';
   static const _kHealth = 'health_v1';
+  static const _kWeight = 'weight_v1';
+  static const _kKcal = 'kcal_v1';
 
   late SharedPreferences _p;
 
@@ -22,6 +24,8 @@ class AppStore extends ChangeNotifier {
   int restSeconds = 120;
   bool sound = true;
   bool healthEnabled = false;
+  double weightKg = 71;
+  bool sendCalories = true;
   WorkoutDraft? draft;
 
   Future<void> load() async {
@@ -48,6 +52,8 @@ class AppStore extends ChangeNotifier {
     restSeconds = _p.getInt(_kRest) ?? 120;
     sound = _p.getBool(_kSound) ?? true;
     healthEnabled = _p.getBool(_kHealth) ?? false;
+    weightKg = _p.getDouble(_kWeight) ?? 71;
+    sendCalories = _p.getBool(_kKcal) ?? true;
     final rawDraft = _p.getString(_kDraft);
     if (rawDraft != null) {
       try {
@@ -206,6 +212,18 @@ class AppStore extends ChangeNotifier {
   Future<void> setHealth(bool v) async {
     healthEnabled = v;
     await _p.setBool(_kHealth, v);
+    notifyListeners();
+  }
+
+  Future<void> setWeight(double kg) async {
+    weightKg = kg;
+    await _p.setDouble(_kWeight, kg);
+    notifyListeners();
+  }
+
+  Future<void> setSendCalories(bool v) async {
+    sendCalories = v;
+    await _p.setBool(_kKcal, v);
     notifyListeners();
   }
 
