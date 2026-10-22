@@ -1,0 +1,56 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Générer le dossier android
+        run: |
+          flutter create . --platforms=android --org fr.webeedigital --project-name anneaux
+          rm -f test/widget_test.dart
+          sed -i 's/android:label="anneaux"/android:label="Anneaux"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Clé de signature stable (permet les mises à jour sans désinstaller)
+        run: |
+          mkdir -p ~/.android
+          cp ci/debug.keystore ~/.android/debug.keystore
+
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anneaux-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publier l'APK dans la release "latest"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Dernière version
+          body: APK généré automatiquement depuis ${{ github.sha }}.
+          prerelease: false
+          make_latest: true
+          files: build/app/outputs/flutter-apk/app-release.apk
