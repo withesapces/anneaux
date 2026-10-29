@@ -6,19 +6,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/home_shell.dart';
 import 'store.dart';
+import 'theme.dart';
+import 'widgets/art.dart';
+import 'widgets/ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: C.bg,
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
   runApp(const AnneauxApp());
 }
-
-ThemeData _theme() => ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFE8833A),
-        brightness: Brightness.dark,
-      ),
-      useMaterial3: true,
-    );
 
 /// Affiche l'app immédiatement, charge les données ensuite.
 /// Si le chargement échoue, l'erreur s'affiche au lieu de rester bloqué sur le logo.
@@ -59,7 +60,12 @@ class _AnneauxAppState extends State<AnneauxApp> {
     }
   }
 
-  Future<void> _reset() async {
+  Future<void> _reset(BuildContext context) async {
+    final ok = await confirmDialog(context, 'Tout réinitialiser ?',
+        'Toutes les séances enregistrées sur ce téléphone seront effacées. '
+            'Copie l\'erreur et tente « Réessayer » d\'abord.',
+        yes: 'Réinitialiser', danger: true);
+    if (!ok) return;
     try {
       final p = await SharedPreferences.getInstance();
       await p.clear();
@@ -76,7 +82,7 @@ class _AnneauxAppState extends State<AnneauxApp> {
         child: MaterialApp(
           title: 'Anneaux',
           debugShowCheckedModeBanner: false,
-          theme: _theme(),
+          theme: appTheme(),
           home: const HomeShell(),
         ),
       );
@@ -84,30 +90,27 @@ class _AnneauxAppState extends State<AnneauxApp> {
     return MaterialApp(
       title: 'Anneaux',
       debugShowCheckedModeBanner: false,
-      theme: _theme(),
+      theme: appTheme(),
       home: Scaffold(
         body: SafeArea(
           child: _error == null
-              ? const Center(child: CircularProgressIndicator())
-              : ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    const Text('Erreur au démarrage',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    SelectableText('$_error\n\n$_stack'),
-                    const SizedBox(height: 16),
-                    FilledButton(onPressed: _load, child: const Text('Réessayer')),
-                    TextButton(
-                      onPressed: () => Clipboard.setData(
-                          ClipboardData(text: '$_error\n\n$_stack')),
-                      child: const Text('Copier l\'erreur'),
-                    ),
-                    TextButton(
-                      onPressed: _reset,
-                      child: const Text('Réinitialiser les données'),
-                    ),
-                  ],
+              ? const Center(child: AnneauxLogo(size: 96))
+              : Builder(
+                  builder: (context) => ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      const D('Erreur au démarrage', size: 40, w: FontWeight.w900),
+                      const SizedBox(height: 12),
+                      SelectableText('$_error\n\n$_stack', style: body(13, color: C.muted)),
+                      const SizedBox(height: 16),
+                      BigButton('Réessayer', height: 72, fontSize: 30, onTap: _load),
+                      const SizedBox(height: 8),
+                      LinkButton('Copier l\'erreur',
+                          onTap: () => Clipboard.setData(
+                              ClipboardData(text: '$_error\n\n$_stack'))),
+                      LinkButton('Réinitialiser les données', onTap: () => _reset(context)),
+                    ],
+                  ),
                 ),
         ),
       ),

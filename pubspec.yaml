@@ -13,6 +13,7 @@ dependencies:
   wakelock_plus: ^1.2.8
   audioplayers: ^6.1.0
   health: ^13.3.2
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
@@ -24,3 +25,16 @@ flutter:
   assets:
     - assets/beep.wav
     - assets/tick.wav
+  fonts:
+    - family: BarlowCondensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BarlowCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowCondensed-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BarlowCondensed-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/BarlowCondensed-Black.ttf
+          weight: 900

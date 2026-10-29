@@ -4,6 +4,8 @@ Carnet d'entraînement aux anneaux (Android, Flutter).
 
 ## Ce que fait l'app
 
+- **Interface** : mode sombre, gros chiffres lisibles à 1,5 m, barre de progression de la séance (1 segment par exercice, 1 trait par série), hauteur de sangle toujours visible, écart en direct avec la dernière fois. Polices : Barlow Condensed (OFL, `assets/fonts`).
+- **Récap de fin** : durée, séries, reps, kcal, records battus et écart par exercice avant d'enregistrer.
 - **Séance guidée** : un exercice à la fois, une série à la fois. Chaque série est pré-remplie avec ce que tu as fait la dernière fois au même rang (reps + hauteur de sangle). Tu ajustes avec − / + (ou en touchant le chiffre) puis « Valider la série ».
 - **Repos de 2 min** automatique après chaque série, avec bouton **« Passer le repos »**, ± 30 s, bips sur les 3 dernières secondes et triple bip + vibration à la fin. Ta musique baisse un instant au lieu d'être coupée.
 - **Chrono** pour les exercices en secondes (Planche, Tenir), avec bip quand l'objectif est atteint.

@@ -239,6 +239,18 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Efface l'historique, la séance en cours et remet le programme par défaut.
+  /// L'historique pré-rempli n'est pas réinjecté (la clé des séances reste présente, vide).
+  Future<void> wipeAll() async {
+    sessions = [];
+    routine = defaultRoutine();
+    draft = null;
+    await _saveSessions();
+    await _saveRoutine();
+    await saveDraft();
+    notifyListeners();
+  }
+
   // ---------- Sauvegarde ----------
 
   String exportJson() => const JsonEncoder.withIndent(' ').convert({
