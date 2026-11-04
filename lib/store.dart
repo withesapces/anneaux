@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'backup.dart';
 import 'models.dart';
 import 'seed.dart';
 
@@ -260,24 +261,20 @@ class AppStore extends ChangeNotifier {
         'sessions': sessions.map((s) => s.toJson()).toList(),
       });
 
-  /// Remplace les données par une sauvegarde. Lève une exception si le texte est invalide.
-  Future<void> importJson(String raw) async {
-    final j = Map<String, dynamic>.from(jsonDecode(raw) as Map);
-    final newSessions = (j['sessions'] as List)
-        .map((e) => Session.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    final newRoutine = (j['routine'] as List)
-        .map((e) => ExerciseDef.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    sessions = newSessions;
-    routine = newRoutine;
-    restSeconds = (j['restSeconds'] as num?)?.toInt() ?? restSeconds;
+  /// Remplace l'historique, le programme et le temps de repos par une sauvegarde déjà lue.
+  Future<void> applyBackup(Backup b) async {
+    sessions = b.sessions;
+    routine = b.routine;
+    restSeconds = b.restSeconds ?? restSeconds;
     _sort();
     await _saveSessions();
     await _saveRoutine();
     await _p.setInt(_kRest, restSeconds);
     notifyListeners();
   }
+
+  /// Lit puis applique une sauvegarde. Lève [BackupException] si le texte est inutilisable.
+  Future<void> importJson(String raw) => applyBackup(parseBackup(raw));
 }
 
 /// Rend le store accessible partout dans l'arbre de widgets.

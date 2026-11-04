@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../backup.dart';
 import '../estimate.dart';
 import '../format.dart';
 import '../health_sync.dart';
@@ -362,19 +363,27 @@ class _SettingsTab extends StatelessWidget {
                 messenger.showSnackBar(const SnackBar(content: Text('Presse-papiers vide.')));
                 return;
               }
+              final Backup backup;
+              try {
+                backup = parseBackup(raw);
+              } on BackupException catch (e) {
+                messenger.showSnackBar(SnackBar(
+                    content: Text(e.message), duration: const Duration(seconds: 8)));
+                return;
+              }
               if (!context.mounted) return;
+              final range = backup.range;
+              final content = range == null
+                  ? 'Cette sauvegarde ne contient aucune séance.'
+                  : 'Cette sauvegarde contient ${backup.sessions.length} séance${backup.sessions.length > 1 ? 's' : ''}, '
+                      'du ${fmtDate(range.$1)} au ${fmtDate(range.$2)}.';
               final ok = await confirmDialog(context, 'Remplacer tes données ?',
-                  'La sauvegarde du presse-papiers remplace l\'historique et le programme actuels. '
+                  '$content\n\nElle remplace tes ${store.sessions.length} séances actuelles et ton programme. '
                       'Exporte d\'abord si tu as un doute.',
                   yes: 'Remplacer', danger: true);
               if (!ok) return;
-              try {
-                await store.importJson(raw);
-                messenger.showSnackBar(const SnackBar(content: Text('Sauvegarde restaurée.')));
-              } catch (_) {
-                messenger.showSnackBar(
-                    const SnackBar(content: Text('Ce texte n\'est pas une sauvegarde valide.')));
-              }
+              await store.applyBackup(backup);
+              messenger.showSnackBar(const SnackBar(content: Text('Sauvegarde restaurée.')));
             }),
           ),
         ]),
