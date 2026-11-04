@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'backup.dart';
+import 'device_files.dart';
 import 'models.dart';
 import 'seed.dart';
 
@@ -17,6 +20,8 @@ class AppStore extends ChangeNotifier {
   static const _kHealth = 'health_v1';
   static const _kWeight = 'weight_v1';
   static const _kKcal = 'kcal_v1';
+  static const _kAutoAt = 'auto_backup_at_v1';
+  static const _kAutoErr = 'auto_backup_err_v1';
 
   late SharedPreferences _p;
 
@@ -28,6 +33,11 @@ class AppStore extends ChangeNotifier {
   double weightKg = 71;
   bool sendCalories = true;
   WorkoutDraft? draft;
+
+  /// Dernière sauvegarde automatique réussie, et dernière erreur éventuelle.
+  DateTime? autoBackupAt;
+  String? autoBackupError;
+  Timer? _autoTimer;
 
   Future<void> load() async {
     _p = await SharedPreferences.getInstance();
@@ -55,6 +65,11 @@ class AppStore extends ChangeNotifier {
     healthEnabled = _p.getBool(_kHealth) ?? false;
     weightKg = _p.getDouble(_kWeight) ?? 71;
     sendCalories = _p.getBool(_kKcal) ?? true;
+    final rawAt = _p.getString(_kAutoAt);
+    autoBackupAt = rawAt == null ? null : DateTime.tryParse(rawAt);
+    autoBackupError = _p.getString(_kAutoErr);
+    // Première ouverture de cette version : on sauvegarde tout de suite ce qui existe.
+    if (autoBackupAt == null) _scheduleAutoBackup();
     final rawDraft = _p.getString(_kDraft);
     if (rawDraft != null) {
       try {
@@ -175,6 +190,7 @@ class AppStore extends ChangeNotifier {
       _sort();
       await _saveSessions();
       await _saveRoutine();
+      _scheduleAutoBackup();
     }
     draft = null;
     await saveDraft();
@@ -187,12 +203,14 @@ class AppStore extends ChangeNotifier {
   Future<void> deleteSession(Session s) async {
     sessions.removeWhere((x) => x.id == s.id);
     await _saveSessions();
+    _scheduleAutoBackup();
     notifyListeners();
   }
 
   Future<void> updateSession(Session s) async {
     _sort();
     await _saveSessions();
+    _scheduleAutoBackup();
     notifyListeners();
   }
 
@@ -201,6 +219,7 @@ class AppStore extends ChangeNotifier {
   Future<void> setRoutine(List<ExerciseDef> r) async {
     routine = r;
     await _saveRoutine();
+    _scheduleAutoBackup();
     notifyListeners();
   }
 
@@ -261,20 +280,67 @@ class AppStore extends ChangeNotifier {
         'sessions': sessions.map((s) => s.toJson()).toList(),
       });
 
-  /// Remplace l'historique, le programme et le temps de repos par une sauvegarde déjà lue.
-  Future<void> applyBackup(Backup b) async {
-    sessions = b.sessions;
-    routine = b.routine;
+  /// Séances de la sauvegarde absentes de l'historique actuel (même identifiant = même séance).
+  List<Session> missingFrom(Backup b) {
+    final known = sessions.map((s) => s.id).toSet();
+    return b.sessions.where((s) => !known.contains(s.id)).toList();
+  }
+
+  /// Ajoute les séances manquantes de la sauvegarde, sans rien supprimer.
+  /// Le programme et le temps de repos sont repris s'ils figurent dans la sauvegarde.
+  /// Renvoie le nombre de séances ajoutées.
+  Future<int> applyBackup(Backup b) async {
+    final added = missingFrom(b);
+    sessions.addAll(added);
+    if (b.routine != null && b.routine!.isNotEmpty) routine = b.routine!;
     restSeconds = b.restSeconds ?? restSeconds;
     _sort();
     await _saveSessions();
     await _saveRoutine();
     await _p.setInt(_kRest, restSeconds);
+    _scheduleAutoBackup();
     notifyListeners();
+    return added.length;
   }
 
   /// Lit puis applique une sauvegarde. Lève [BackupException] si le texte est inutilisable.
-  Future<void> importJson(String raw) => applyBackup(parseBackup(raw));
+  Future<int> importJson(String raw) => applyBackup(parseBackup(raw));
+
+  // ---------- Sauvegarde automatique ----------
+
+  /// Regroupe les modifications rapprochées (édition série par série) en une seule écriture.
+  void _scheduleAutoBackup() {
+    _autoTimer?.cancel();
+    _autoTimer = Timer(const Duration(seconds: 2), () => autoBackupNow());
+  }
+
+  /// Rien de personnel à sauvegarder : historique vide ou seulement l'historique pré-rempli.
+  /// Évite d'écraser le fichier du jour avec des données vides après un effacement.
+  bool get _nothingToBackup =>
+      sessions.isEmpty || sessions.every((s) => s.id.startsWith('seed-'));
+
+  static String backupFileName(DateTime d) =>
+      'anneaux-${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}.json';
+
+  /// Écrit la sauvegarde du jour dans Téléchargements/Anneaux (un fichier par jour,
+  /// remplacé dans la journée). Renvoie null si OK, sinon le message d'erreur.
+  Future<String?> autoBackupNow({bool force = false}) async {
+    _autoTimer?.cancel();
+    if (!force && _nothingToBackup) return null;
+    final now = DateTime.now();
+    try {
+      await DeviceFiles.save(backupFileName(now), exportJson());
+      autoBackupAt = now;
+      autoBackupError = null;
+      await _p.setString(_kAutoAt, now.toIso8601String());
+      await _p.remove(_kAutoErr);
+    } catch (e) {
+      autoBackupError = e is PlatformException ? (e.message ?? e.code) : e.toString();
+      await _p.setString(_kAutoErr, autoBackupError!);
+    }
+    notifyListeners();
+    return autoBackupError;
+  }
 }
 
 /// Rend le store accessible partout dans l'arbre de widgets.

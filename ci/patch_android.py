@@ -33,10 +33,11 @@ patch(gradle, 'signingConfig = signingConfigs.getByName("debug")',
 # Health Connect exige Android 8 (API 26) minimum.
 patch(gradle, r"minSdk = [^\n]+", "minSdk = 26", regex=True)
 
-# 2. Health Connect : l'activité doit être une FlutterFragmentActivity.
+# 2. MainActivity : FlutterFragmentActivity (Health Connect) + canal de fichiers (sauvegarde).
 main = next(root.glob("src/main/kotlin/**/MainActivity.kt"))
-s = main.read_text().replace("FlutterActivity", "FlutterFragmentActivity")
-main.write_text(s)
+if "package fr.webeedigital.anneaux" not in main.read_text():
+    sys.exit(f"Package inattendu dans {main}")
+shutil.copy("ci/MainActivity.kt", main)
 
 # 3. Manifest : nom, permissions, filtres d'intent Health Connect.
 manifest = root / "src/main/AndroidManifest.xml"

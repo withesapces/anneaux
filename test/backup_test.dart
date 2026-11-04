@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:anneaux/backup.dart';
 import 'package:anneaux/models.dart';
 import 'package:anneaux/seed.dart';
+import 'package:anneaux/store.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 String _export() => const JsonEncoder.withIndent(' ').convert({
       'version': 1,
@@ -13,10 +15,32 @@ String _export() => const JsonEncoder.withIndent(' ').convert({
     });
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('l\'import ajoute les séances manquantes sans rien effacer', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore();
+    await store.load();
+    final before = store.sessions.length;
+    final extra = Session(id: 'restaure-2026-10-27', date: DateTime(2026, 10, 27, 12), exercises: [
+      ExerciseLog(name: 'Pull ups', sets: [SetLog(10, 5)]),
+    ]);
+    final raw = jsonEncode({
+      'version': 1,
+      'sessions': [extra.toJson(), store.sessions.last.toJson()],
+    });
+    expect(store.missingFrom(parseBackup(raw)).length, 1);
+    final added = await store.importJson(raw);
+    expect(added, 1);
+    expect(store.sessions.length, before + 1);
+    expect(store.sessions.first.id, 'restaure-2026-10-27');
+    expect(store.routine.length, defaultRoutine().length);
+  });
+
   test('un export de l\'app se relit tel quel', () {
     final b = parseBackup(_export());
     expect(b.sessions.length, seedSessions().length);
-    expect(b.routine.length, defaultRoutine().length);
+    expect(b.routine!.length, defaultRoutine().length);
     expect(b.restSeconds, 120);
     expect(b.range!.$1, DateTime(2026, 8, 25, 12));
     expect(b.range!.$2, DateTime(2026, 10, 20, 12));

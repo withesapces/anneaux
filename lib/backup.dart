@@ -14,10 +14,12 @@ class BackupException implements Exception {
 /// Contenu d'une sauvegarde, lu mais pas encore appliqué.
 class Backup {
   final List<Session> sessions;
-  final List<ExerciseDef> routine;
+
+  /// Null si la sauvegarde ne contient que des séances (on garde alors le programme actuel).
+  final List<ExerciseDef>? routine;
   final int? restSeconds;
 
-  const Backup({required this.sessions, required this.routine, this.restSeconds});
+  const Backup({required this.sessions, this.routine, this.restSeconds});
 
   /// Séance la plus ancienne et la plus récente (null si aucune séance).
   (DateTime, DateTime)? get range {
@@ -75,9 +77,9 @@ Backup parseBackup(String raw) {
     throw const BackupException('Ce texte n\'est pas une sauvegarde Anneaux.');
   }
   final j = Map<String, dynamic>.from(decoded);
-  if (j['sessions'] is! List || j['routine'] is! List) {
+  if (j['sessions'] is! List || (j['routine'] != null && j['routine'] is! List)) {
     throw const BackupException(
-        'Ce texte n\'est pas une sauvegarde Anneaux (séances ou programme absents).');
+        'Ce texte n\'est pas une sauvegarde Anneaux (aucune liste de séances).');
   }
 
   final sessions = <Session>[];
@@ -90,10 +92,11 @@ Backup parseBackup(String raw) {
     }
   }
 
-  final routine = <ExerciseDef>[];
-  for (final r in j['routine'] as List) {
+  final rawRoutine = (j['routine'] as List?) ?? const [];
+  final parsedRoutine = <ExerciseDef>[];
+  for (final r in rawRoutine) {
     try {
-      routine.add(ExerciseDef.fromJson(Map<String, dynamic>.from(r as Map)));
+      parsedRoutine.add(ExerciseDef.fromJson(Map<String, dynamic>.from(r as Map)));
     } catch (_) {
       throw const BackupException('Programme illisible dans la sauvegarde.');
     }
@@ -102,7 +105,7 @@ Backup parseBackup(String raw) {
   final rest = j['restSeconds'];
   return Backup(
     sessions: sessions,
-    routine: routine,
+    routine: parsedRoutine.isEmpty ? null : parsedRoutine,
     restSeconds: rest is num ? rest.toInt() : null,
   );
 }

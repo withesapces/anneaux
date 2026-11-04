@@ -15,7 +15,7 @@ Carnet d'entraînement aux anneaux (Android, Flutter).
 - **Programme** modifiable : ordre, hauteurs, reps ou secondes, « de chaque côté », durée du repos.
 - **Temps restant et heure de fin estimée** pendant la séance (et sur l'accueil avant de commencer). Le calcul se recale sur ton rythme réel dès 3 séries faites.
 - **Samsung Health** : onglet Programme > « Envoyer les séances à Samsung Health ». La séance est écrite dans Health Connect comme entraînement de musculation, et Samsung Health la récupère si la synchro Health Connect est activée dans ses paramètres.
-- **Sauvegarde** : export/import en texte via le presse-papiers.
+- **Sauvegarde** : copie automatique après chaque séance dans `Téléchargements/Anneaux/anneaux-AAAA-MM-JJ.json` (conservée si l'app est désinstallée). Import depuis un fichier ou le presse-papiers : ajoute les séances manquantes sans rien effacer.
 
 Le nombre de séries visé pour chaque exercice = le nombre de séries faites la dernière fois. Une fois atteint, l'app passe à l'exercice suivant (tu peux revenir en arrière pour une série bonus).
 
@@ -26,7 +26,7 @@ Chaque push sur `main` compile l'APK automatiquement (onglet **Actions**). Une f
 1. Sur le téléphone, ouvre la page **Releases** du dépôt → « Dernière version » → `app-release.apk`.
 2. Autorise l'installation depuis le navigateur si Android le demande.
 
-Les builds sont signés avec la même clé (`ci/debug.keystore`), donc une nouvelle version s'installe par-dessus l'ancienne sans perdre les données.
+Les builds sont signés avec la même clé (`ci/debug.keystore`), donc une nouvelle version s'installe par-dessus l'ancienne sans perdre les données. Ne pas désinstaller l'app avant une mise à jour : la désinstallation efface son stockage interne.
 
 ## Développer en local
 

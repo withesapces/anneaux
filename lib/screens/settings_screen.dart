@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../backup.dart';
+import '../device_files.dart';
 import '../estimate.dart';
 import '../format.dart';
 import '../health_sync.dart';
@@ -340,11 +341,43 @@ class _SettingsTab extends StatelessWidget {
           ]),
         ),
         const SizedBox(height: 20),
-        const Lbl('Sauvegarde par presse-papiers', size: 14),
+        const Lbl('Sauvegarde', size: 14),
         const SizedBox(height: 8),
+        Text(_autoBackupStatus(store),
+            style: body(13, color: store.autoBackupError == null ? C.muted : const Color(0xFFFF5A4E), height: 1.4)),
+        const SizedBox(height: 10),
         Row(children: [
           Expanded(
-            child: TileButton('Exporter', icon: Icons.upload_rounded, height: 64, fontSize: 24,
+            child: TileButton('Sauver', icon: Icons.save_alt_rounded, height: 64, fontSize: 24,
+                onTap: () async {
+              final err = await store.autoBackupNow(force: true);
+              if (context.mounted) {
+                toast(context, err == null
+                    ? 'Sauvegarde écrite dans ${DeviceFiles.folderLabel}.'
+                    : 'Échec de la sauvegarde : $err');
+              }
+            }),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TileButton('Fichier', icon: Icons.folder_open_rounded, height: 64, fontSize: 24,
+                onTap: () async {
+              final String? raw;
+              try {
+                raw = await DeviceFiles.open();
+              } catch (e) {
+                if (context.mounted) toast(context, 'Impossible d\'ouvrir le fichier : $e');
+                return;
+              }
+              if (raw == null || !context.mounted) return;
+              await _importBackupText(context, store, raw);
+            }),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: TileButton('Copier', icon: Icons.copy_rounded, height: 56, fontSize: 20,
                 onTap: () async {
               await Clipboard.setData(ClipboardData(text: store.exportJson()));
               if (context.mounted) {
@@ -354,41 +387,21 @@ class _SettingsTab extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: TileButton('Importer', icon: Icons.download_rounded, height: 64, fontSize: 24,
+            child: TileButton('Coller', icon: Icons.content_paste_rounded, height: 56, fontSize: 20,
                 onTap: () async {
-              final messenger = ScaffoldMessenger.of(context);
               final data = await Clipboard.getData(Clipboard.kTextPlain);
               final raw = data?.text;
-              if (raw == null || raw.trim().isEmpty) {
-                messenger.showSnackBar(const SnackBar(content: Text('Presse-papiers vide.')));
-                return;
-              }
-              final Backup backup;
-              try {
-                backup = parseBackup(raw);
-              } on BackupException catch (e) {
-                messenger.showSnackBar(SnackBar(
-                    content: Text(e.message), duration: const Duration(seconds: 8)));
-                return;
-              }
               if (!context.mounted) return;
-              final range = backup.range;
-              final content = range == null
-                  ? 'Cette sauvegarde ne contient aucune séance.'
-                  : 'Cette sauvegarde contient ${backup.sessions.length} séance${backup.sessions.length > 1 ? 's' : ''}, '
-                      'du ${fmtDate(range.$1)} au ${fmtDate(range.$2)}.';
-              final ok = await confirmDialog(context, 'Remplacer tes données ?',
-                  '$content\n\nElle remplace tes ${store.sessions.length} séances actuelles et ton programme. '
-                      'Exporte d\'abord si tu as un doute.',
-                  yes: 'Remplacer', danger: true);
-              if (!ok) return;
-              await store.applyBackup(backup);
-              messenger.showSnackBar(const SnackBar(content: Text('Sauvegarde restaurée.')));
+              if (raw == null || raw.trim().isEmpty) {
+                toast(context, 'Presse-papiers vide.');
+                return;
+              }
+              await _importBackupText(context, store, raw);
             }),
           ),
         ]),
         const SizedBox(height: 6),
-        Text('Les données restent sur ce téléphone. Exporte de temps en temps pour ne rien perdre si tu changes de téléphone.',
+        Text('« Fichier » et « Coller » ajoutent les séances manquantes sans rien effacer.',
             style: body(12, color: C.faint)),
         const SizedBox(height: 16),
         Material(
@@ -471,4 +484,53 @@ class _FieldBox extends StatelessWidget {
           child: child,
         ),
       );
+}
+
+String _two(int n) => n.toString().padLeft(2, '0');
+
+String _autoBackupStatus(AppStore store) {
+  final at = store.autoBackupAt;
+  if (store.autoBackupError != null) {
+    return 'Sauvegarde automatique en échec : ${store.autoBackupError}';
+  }
+  if (at == null) {
+    return 'Après chaque séance, une copie est écrite dans ${DeviceFiles.folderLabel} '
+        '(un fichier par jour). Elle reste même si l\'app est désinstallée.';
+  }
+  return 'Dernière sauvegarde automatique : ${fmtShort(at)} à ${at.hour}h${_two(at.minute)}, '
+      'dans ${DeviceFiles.folderLabel}. Elle reste même si l\'app est désinstallée.';
+}
+
+/// Lit une sauvegarde, montre ce qu'elle apporte, puis ajoute les séances manquantes.
+Future<void> _importBackupText(BuildContext context, AppStore store, String raw) async {
+  final Backup backup;
+  try {
+    backup = parseBackup(raw);
+  } on BackupException catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), duration: const Duration(seconds: 8)));
+    return;
+  }
+  final missing = store.missingFrom(backup);
+  final known = backup.sessions.length - missing.length;
+  final dates = missing.map((s) => s.date).toList()..sort();
+  final parts = <String>[
+    missing.isEmpty
+        ? 'Aucune nouvelle séance : tout ce qu\'elle contient est déjà dans ton historique.'
+        : '${missing.length} séance${missing.length > 1 ? 's' : ''} à ajouter'
+            '${missing.length == 1 ? ' : ${fmtDate(dates.first)}' : ', du ${fmtDate(dates.first)} au ${fmtDate(dates.last)}'}.',
+    if (known > 0) '$known déjà présente${known > 1 ? 's' : ''}, ignorée${known > 1 ? 's' : ''}.',
+    if (backup.routine != null) 'Le programme sera remplacé par celui de la sauvegarde.',
+    'Rien ne sera effacé.',
+  ];
+  if (missing.isEmpty && backup.routine == null) {
+    toast(context, parts.first);
+    return;
+  }
+  final ok = await confirmDialog(context, 'Importer ?', parts.join('\n'), yes: 'Importer');
+  if (!ok) return;
+  final added = await store.applyBackup(backup);
+  if (context.mounted) {
+    toast(context, added == 0 ? 'Programme restauré.' : '$added séance${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''}.');
+  }
 }
